@@ -1,4 +1,13 @@
 <html>
+
+<body>
+  <label> Email: </label>
+  <input type="text" name="email" id="email">
+  <label> Password: </label>
+  <input type="password" name="password" id="password">
+  <button type="button" onClick="login()">Login</button>
+</body>
+
 <script>
   function login() {
     const email = document.getElementById("email").value;
@@ -17,13 +26,5 @@
       });
   }
 </script>
-
-<body>
-  <label> Email: </label>
-  <input type="text" name="email" id="email">
-  <label> Password: </label>
-  <input type="password" name="password" id="password">
-  <button type="button" onClick="login()">Login</button>
-</body>
 
 </html>
