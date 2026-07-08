@@ -2,16 +2,13 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 
+import User from "./models/user.js";
+
 dotenv.config();
 await mongoose.connect(process.env.MongoDB_String)
   .then(() => console.log("Database connection successful"))
   .catch(err => { console.log(err) });
-const userSchema = new mongoose.Schema({
-  name: { type: String },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-})
-const User = new mongoose.model("users", userSchema);
+
 // create express server app
 const app = express()
 
