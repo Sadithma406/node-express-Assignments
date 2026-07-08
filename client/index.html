@@ -1,21 +1,25 @@
 <html>
 
-<body>
-  <h2>Login</h2>
+<head>
+  <link rel="styleSheet" href="styles.css">
+</head>
+
+<body id="index-body">
+  <h2 id="heading">Login</h2>
   <label> Email: </label>
   <input type="text" name="email" id="email"><br><br>
   <label> Password: </label>
   <input type="password" name="password" id="password"><br><br>
-  <button type="button" onClick="login()">Login</button><br><br>
+  <button id="btn" type="button" onClick="login()">Login</button><br><br>
   <p>Don't have an account? <a href="register.html">Register</a> </p>
-
+  <p id="errMsg"></p>
 </body>
 
 <script>
   function login() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-
+    const errMsg = document.getElementById("errMsg");
     fetch("/api/login", {
       method: "POST",
       headers: {
@@ -24,6 +28,15 @@
       body: JSON.stringify({ email, password })
     })
       .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          errMsg.innerHTML = "";
+          alert("Successfully LoggedIn!");
+        }
+        else {
+          errMsg.innerHTML = data.message;
+        }
+      })
       .catch(err => {
         alert("Error connecting to server " + err);
       });

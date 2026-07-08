@@ -25,12 +25,17 @@ app.use(express.json())
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email: email, password: password })
+    const user = await User.findOne({ email: email })
     if (user) {
-      res.send({ success: true })
+      if (user.password === password) {
+        res.send({ success: true })
+      }
+      else {
+        res.send({ success: false, message: "Incorrect password" })
+      }
     }
     else {
-      res.send({ success: false })
+      res.send({ success: false, message: "User not found! Register to login" })
     }
   } catch (err) {
     console.log(err)

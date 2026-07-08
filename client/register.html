@@ -1,6 +1,10 @@
 <html>
 
-<body>
+<head>
+  <link rel="styleSheet" href="styles.css">
+</head>
+
+<body id="register-body">
   <h2>Register</h2>
   <label> Email: </label>
   <input type="text" name="email" id="email"><br><br>
@@ -9,7 +13,7 @@
   <label>Confirm password</label>
   <input type="password" name="confirmPassword" id="confirmPassword"><br><br>
   <button type="button" onClick="register()">Register</button><br><br>
-  <p>Already have an account? <a href="index.html">Login</a> </p><br><br>
+  <p>Already have an account? <a href="/">Login</a> </p>
   <p id="errMsg"></p>
 </body>
 <script>
@@ -31,7 +35,7 @@
         .then(data => {
           if (data.success) {
             alert("Registration successfull");
-            window.location.href = "index.html";
+            window.location.href = "/";
           }
           else {
             errorMsg.innerHTML = data.error;
