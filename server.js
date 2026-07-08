@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 
 dotenv.config();
-mongoose.connect(process.env.MongoDB_String)
+await mongoose.connect(process.env.MongoDB_String)
   .then(() => console.log("Database connection successful"))
   .catch(err => { console.log(err) });
 const userSchema = new mongoose.Schema({
@@ -37,9 +37,38 @@ app.post("/api/login", async (req, res) => {
     res.send({ success: false })
   }
 })
+app.post("/api/register", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = new User({ email: email, password: password })
+    await user.save();
+    res.send({ success: true })
+  }
+  catch (err) {
+    res.send({ success: false, error: getErrorMessage(err) });
+  }
+})
 
+function getErrorMessage(err) {
+  // Duplicate key error
+  if (err.code === 11000) {
+    return "Email entered is already registered. Please use a different one.";
+  }
+
+  // Validation errors
+  if (err.name === "ValidationError") {
+    return "Email or password cannot be empty";
+  }
+
+  // Database connection / network error
+  if (err.name === "MongoNetworkError") {
+    return "Cannot connect to the database. Please try again later."
+  }
+
+  // Fallback for any other unexpected error
+  return "Something went wrong. Please try again."
+}
 // start server 
 app.listen(3000, () => {
-  // started callback
   console.log("Server started! http://localhost:3000")
 })
