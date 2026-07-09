@@ -1,5 +1,6 @@
 #index-body,
-#register-body {
+#register-body,
+#forgotPassword-body {
   margin: auto;
   border: 1px solid black;
   width: 50%;
@@ -8,6 +9,9 @@
   text-align: center;
 }
 
-#errMsg {
+#errMsg,
+#errMsg1,
+#errMsg2,
+#errMsg3 {
   color: red;
 }
