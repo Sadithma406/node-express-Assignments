@@ -5,10 +5,6 @@ import dotenv from "dotenv";
 import User from "./models/user.js";
 
 dotenv.config();
-await mongoose.connect(process.env.MongoDB_String)
-  .then(() => console.log("Database connection successful"))
-  .catch(err => { console.log(err) });
-
 // create express server app
 const app = express()
 
@@ -51,6 +47,58 @@ app.post("/api/register", async (req, res) => {
   }
 })
 
+const otpStore = new Map();
+
+app.post("/api/forgot-password", async (req, res) => {
+  const email = req.body.email;
+  try {
+    const user = await User.findOne({ email });
+    if (user) {
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      console.log("OTP for", email, ":", otp);
+      otpStore.set(email, { otp: String(otp), verified: false });
+      res.send({ success: true });
+    } else {
+      res.send({ success: false, message: "User not found" });
+    }
+  } catch (err) {
+    res.send({ success: false, message: "Server error. Please try again." });
+  }
+})
+
+app.post("/api/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const entry = otpStore.get(email);
+    if (!entry) {
+      return res.send({ success: false, message: "OTP expired. Please start again." });
+    }
+    if (entry.otp !== String(otp)) {
+      return res.send({ success: false, message: "Incorrect OTP. Please try again." });
+    }
+    otpStore.set(email, { ...entry, verified: true });
+    res.send({ success: true });
+  }
+  catch (err) {
+    res.send({ success: false, message: "Server error. Please try again." });
+  }
+})
+
+app.post("/api/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+  try {
+    const user = await User.findOneAndUpdate({ email }, { password: newPassword })
+    if (user) {
+      res.send({ success: true, message: "Password reset successful" })
+    }
+    else {
+      res.send({ success: false, message: "User not found" })
+    }
+  } catch (err) {
+    res.send({ success: false, message: "Server error. Please try again." });
+  }
+})
+
 function getErrorMessage(err) {
   // Duplicate key error
   if (err.code === 11000) {
@@ -70,7 +118,16 @@ function getErrorMessage(err) {
   // Fallback for any other unexpected error
   return "Something went wrong. Please try again."
 }
-// start server 
-app.listen(3000, () => {
-  console.log("Server started! http://localhost:3000")
-})
+
+try {
+  await mongoose.connect(process.env.MongoDB_String);
+  console.log("Database connection successful");
+  // start server 
+  app.listen(3000, () => {
+    console.log("Server started! http://localhost:3000")
+  })
+}
+catch (err) {
+  console.log("Database connection failed:", err.message);
+}
+
