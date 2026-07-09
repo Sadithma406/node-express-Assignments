@@ -86,9 +86,16 @@ app.post("/api/verify-otp", async (req, res) => {
 
 app.post("/api/reset-password", async (req, res) => {
   const { email, newPassword } = req.body;
+
+  const entry = otpStore.get(email);
+  if (!entry || !entry.verified) {
+    return res.send({ success: false, message: "OTP not verified. Please start again." });
+  }
+
   try {
     const user = await User.findOneAndUpdate({ email }, { password: newPassword })
     if (user) {
+      otpStore.delete(email);
       res.send({ success: true, message: "Password reset successful" })
     }
     else {
