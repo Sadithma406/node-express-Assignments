@@ -18,7 +18,7 @@ app.use(express.json())
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email: email })
+    const user = await User.findOne({ email })
     if (user) {
       if (user.password === password) {
         res.send({ success: true })
@@ -38,7 +38,7 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/register", async (req, res) => {
   const { name, email, password } = req.body;
   try {
-    const user = new User({ name: name, email: email, password: password })
+    const user = new User({ name, email, password })
     await user.save();
     res.send({ success: true })
   }
