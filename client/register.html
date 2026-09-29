@@ -6,49 +6,53 @@
 
 <body id="register-body">
   <h2>Register</h2>
-  <label>Name: </label>
-  <input type="text" name="name" id="name"><br><br>
-  <label> Email: </label>
-  <input type="text" name="email" id="email"><br><br>
-  <label> Password: </label>
-  <input type="password" name="password" id="password"><br><br>
-  <label>Confirm password</label>
-  <input type="password" name="confirmPassword" id="confirmPassword"><br><br>
+  <form id="register-form" enctype="multipart/form-data">
+    <label>Name: </label>
+    <input type="text" name="name" id="name"><br><br>
+    <label> Email: </label>
+    <input type="text" name="email" id="email"><br><br>
+    <label> Password: </label>
+    <input type="password" name="password" id="password"><br><br>
+    <label>Confirm password</label>
+    <input type="password" name="confirmPassword" id="confirmPassword"><br><br>
+    <label>Profile picture: </label>
+    <input type="file" name="profilePicture" id="profilePicture"><br><br>
+  </form>
   <button type="button" onClick="register()">Register</button><br><br>
   <p>Already have an account? <a href="/">Login</a> </p>
   <p id="errMsg"></p>
 </body>
 <script>
   function register() {
+    const form = document.getElementById("register-form");
+    const formData = new FormData(form);
     const name = document.getElementById("name").value;
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const errorMsg = document.getElementById("errMsg");
 
-    if (password != confirmPassword) {
+    if (password !== confirmPassword) {
       errorMsg.innerHTML = "Passwords do not match";
-    } else {
-      fetch("api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
-      })
-        .then(data => data.json())
-        .then(data => {
-          if (data.success) {
-            alert("Registration successfull");
-            window.location.href = "/";
-          }
-          else {
-            errorMsg.innerHTML = data.error;
-          }
-        })
-        .catch(err => {
-          errorMsg.innerHTML = "Network error: " + err.message;
-        })
+      return;
     }
 
+    fetch("/api/register", {
+      method: "POST",
+      body: formData
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("Registration successful");
+          window.location.href = "/";
+        } else {
+          errorMsg.innerHTML = data.error || data.message || "Registration failed";
+        }
+      })
+      .catch(err => {
+        errorMsg.innerHTML = "Network error: " + err.message;
+      });
   }
 </script>
 

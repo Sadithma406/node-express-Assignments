@@ -1,18 +1,36 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import nodemailer from "nodemailer";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 import User from "./models/user.js";
 
 dotenv.config();
+
+const fileName = fileURLToPath(import.meta.url);
+const dirName = path.dirname(fileName);
+const uploadDir = path.join(dirName, "client", "uploads");
+const upload = multer({ dest: uploadDir });
 // create express server app
-const app = express()
+const app = express();
 
 // serve static files on client folder
-app.use(express.static("client"))
+app.use(express.static("client"));
 
 // setup json middleware
-app.use(express.json())
+app.use(express.json());
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  }
+});
 
 // define api
 app.post("/api/login", async (req, res) => {
@@ -35,14 +53,26 @@ app.post("/api/login", async (req, res) => {
     res.send({ success: false })
   }
 })
-app.post("/api/register", async (req, res) => {
+
+app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
   const { name, email, password } = req.body;
+  const profilePicture = req.file;
+
   try {
-    const user = new User({ name, email, password })
+    let index = null;
+    if (profilePicture) {
+      const count = await User.countDocuments();
+      index = count + 1;
+      const extension = path.extname(profilePicture.originalname);
+      const newFilename = `${index}${extension}`;
+      fs.renameSync(profilePicture.path, path.join(uploadDir, newFilename));
+    }
+
+    const user = new User({ name, email, password, profilePicture: index });
+
     await user.save();
-    res.send({ success: true })
-  }
-  catch (err) {
+    res.send({ success: true, message: "Registration successful" });
+  } catch (err) {
     res.send({ success: false, error: getErrorMessage(err) });
   }
 })
@@ -57,6 +87,12 @@ app.post("/api/forgot-password", async (req, res) => {
       const otp = Math.floor(100000 + Math.random() * 900000);
       console.log("OTP for", email, ":", otp);
       otpStore.set(email, { otp: String(otp), verified: false });
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Password Reset OTP",
+        text: `Your OTP is ${otp}. Please verify it to reset your password`,
+      });
       res.send({ success: true });
     } else {
       res.send({ success: false, message: "User not found" });
