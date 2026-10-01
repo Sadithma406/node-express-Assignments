@@ -36,6 +36,9 @@ const transporter = nodemailer.createTransport({
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
+    if (!email || !password) {
+      return res.send({ success: false, message: "Email and password are required" })
+    }
     const user = await User.findOne({ email })
     if (user) {
       if (user.password === password) {
@@ -59,6 +62,18 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
   const profilePicture = req.file;
 
   try {
+    if (!name || !email || !password) {
+      return res.send({ success: false, message: "Name, email and password are required" })
+    }
+    if (password.length < 8) {
+      return res.send({ success: false, message: "Password must be at least 8 characters long" })
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return res.send({ success: false, message: "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character" })
+    }
+    if (!email.includes("@") || !email.includes(".")) {
+      return res.send({ success: false, message: "Invalid email format" })
+    }
     let index = null;
     if (profilePicture) {
       const count = await User.countDocuments();
@@ -126,6 +141,12 @@ app.post("/api/reset-password", async (req, res) => {
   const entry = otpStore.get(email);
   if (!entry || !entry.verified) {
     return res.send({ success: false, message: "OTP not verified. Please start again." });
+  }
+  if (newPassword.length < 8) {
+    return res.send({ success: false, message: "Password must be at least 8 characters long" })
+  }
+  if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+    return res.send({ success: false, message: "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character" })
   }
 
   try {

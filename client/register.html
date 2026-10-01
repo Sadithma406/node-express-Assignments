@@ -18,42 +18,10 @@
     <label>Profile picture: </label>
     <input type="file" name="profilePicture" id="profilePicture"><br><br>
   </form>
-  <button type="button" onClick="register()">Register</button><br><br>
+  <button type="button" id="registerBtn">Register</button><br><br>
   <p>Already have an account? <a href="/">Login</a> </p>
   <p id="errMsg"></p>
 </body>
-<script>
-  function register() {
-    const form = document.getElementById("register-form");
-    const formData = new FormData(form);
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const confirmPassword = document.getElementById("confirmPassword").value;
-    const errorMsg = document.getElementById("errMsg");
-
-    if (password !== confirmPassword) {
-      errorMsg.innerHTML = "Passwords do not match";
-      return;
-    }
-
-    fetch("/api/register", {
-      method: "POST",
-      body: formData
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert("Registration successful");
-          window.location.href = "/";
-        } else {
-          errorMsg.innerHTML = data.error || data.message || "Registration failed";
-        }
-      })
-      .catch(err => {
-        errorMsg.innerHTML = "Network error: " + err.message;
-      });
-  }
-</script>
+<script src="register.js"></script>
 
 </html>
