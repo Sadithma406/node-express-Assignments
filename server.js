@@ -32,6 +32,19 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+function validatePassword(password) {
+  if (password.length < 8) {
+    const msg = "Password must be at least 8 characters long";
+    return msg
+  }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    const msg = "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
+    return msg
+  }
+  else { return null }
+}
+
+
 // define api
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
@@ -42,7 +55,9 @@ app.post("/api/login", async (req, res) => {
     const user = await User.findOne({ email })
     if (user) {
       if (user.password === password) {
-        res.send({ success: true })
+        const name = user.name;
+        const email = user.email;
+        res.send({ success: true, name, email })
       }
       else {
         res.send({ success: false, message: "Incorrect password" })
@@ -65,11 +80,9 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
     if (!name || !email || !password) {
       return res.send({ success: false, message: "Name, email and password are required" })
     }
-    if (password.length < 8) {
-      return res.send({ success: false, message: "Password must be at least 8 characters long" })
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return res.send({ success: false, message: "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character" })
+    const msg = validatePassword(password);
+    if (msg) {
+      return res.send({ success: false, message: msg })
     }
     if (!email.includes("@") || !email.includes(".")) {
       return res.send({ success: false, message: "Invalid email format" })
@@ -86,9 +99,9 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
     const user = new User({ name, email, password, profilePicture: index });
 
     await user.save();
-    res.send({ success: true, message: "Registration successful" });
+    res.send({ success: true, message: "Registration successful", name, email });
   } catch (err) {
-    res.send({ success: false, error: getErrorMessage(err) });
+    res.send({ success: false, message: getErrorMessage(err) });
   }
 })
 
@@ -142,11 +155,9 @@ app.post("/api/reset-password", async (req, res) => {
   if (!entry || !entry.verified) {
     return res.send({ success: false, message: "OTP not verified. Please start again." });
   }
-  if (newPassword.length < 8) {
-    return res.send({ success: false, message: "Password must be at least 8 characters long" })
-  }
-  if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
-    return res.send({ success: false, message: "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character" })
+  const msg = validatePassword(newPassword);
+  if (msg) {
+    return res.send({ success: false, message: msg })
   }
 
   try {
@@ -162,7 +173,58 @@ app.post("/api/reset-password", async (req, res) => {
     res.send({ success: false, message: "Server error. Please try again." });
   }
 })
+app.post("/api/edit-profile", upload.single("profilePicture"), async (req, res) => {
+  const { currentEmail, email, name, password } = req.body;
+  const profilePicture = req.file;
 
+  try {
+    const user = await User.findOne({ email: currentEmail });
+    if (!user) {
+      return res.send({ success: false, message: "User not found" });
+    }
+    if (!email) {
+      return res.send({ success: false, message: "Email cannot be empty!" });
+    }
+    user.name = name;
+
+    if (email !== currentEmail) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.send({ success: false, message: "The new email is already registered by another account" });
+      }
+      if (!email.includes("@") || !email.includes(".")) {
+        return res.send({ success: false, message: "Invalid email format" })
+      }
+      user.email = email;
+    }
+
+    if (password) {
+      const msg = validatePassword(password);
+      if (msg) {
+        return res.send({ success: false, message: msg })
+      }
+      user.password = password;
+    }
+
+    if (profilePicture) {
+      let index = user.profilePicture;
+      if (!index) {
+        const count = await User.countDocuments();
+        index = count + 1;
+        user.profilePicture = index;
+      }
+
+      const extension = path.extname(profilePicture.originalname);
+      const newFilename = `${index}${extension}`;
+      fs.renameSync(profilePicture.path, path.join(uploadDir, newFilename));
+    }
+
+    await user.save();
+    res.send({ success: true, message: "Profile updated successfully", newEmail: user.email });
+  } catch (err) {
+    res.send({ success: false, message: getErrorMessage(err) });
+  }
+})
 function getErrorMessage(err) {
   // Duplicate key error
   if (err.code === 11000) {

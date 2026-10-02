@@ -10,7 +10,9 @@ body {
 
 #index-body,
 #register-body,
-#forgotPassword-body {
+#forgotPassword-body,
+#dashboard-body,
+#editProfile-body {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -115,4 +117,9 @@ a:hover {
   margin-top: 12px;
   margin-bottom: 0;
   min-height: 18px;
+}
+li{
+  list-style: none;
+  padding: 8px 0;
+  text-align: left;
 }

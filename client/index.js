@@ -17,7 +17,10 @@ function login() {
     .then(data => {
       if (data.success) {
         errMsg.innerHTML = "";
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userName", data.name);
         alert("Successfully LoggedIn!");
+        window.location.href = "/dashboard.html";
       }
       else {
         errMsg.innerHTML = data.message;

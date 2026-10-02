@@ -3,13 +3,9 @@ registerBtn.addEventListener("click", register);
 function register() {
     const form = document.getElementById("register-form");
     const formData = new FormData(form);
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const confirmPassword = document.getElementById("confirmPassword").value;
     const errorMsg = document.getElementById("errMsg");
 
-    if (password !== confirmPassword) {
+    if (formData.get("password") !== formData.get("confirmPassword")) {
       errorMsg.innerHTML = "Passwords do not match";
       return;
     }
@@ -23,7 +19,9 @@ function register() {
         if (data.success) {
           errorMsg.innerHTML = "";
           alert("Registration successful");
-          window.location.href = "/";
+          localStorage.setItem("userEmail", data.email);
+          localStorage.setItem("userName", data.name);
+          window.location.href = "/dashboard.html";
         } else {
           errorMsg.innerHTML =  data.message || "Registration failed";
         }
