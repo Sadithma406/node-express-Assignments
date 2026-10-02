@@ -1,0 +1,82 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="editProfile-body">
+    <h2>Edit Profile</h2>
+    <form id="editProfileForm">
+      <label>Name:
+        <input type="text" id="name" name="name">
+      </label>
+      <label>Email:
+        <input type="email" id="email" name="email" required>
+      </label>
+      <label>Password:
+        <input type="password" id="password" name="password">
+      </label>
+      <label>Confirm Password:
+        <input type="password" id="confirmPassword" name="confirmPassword">
+      </label>
+      <label>Profile Picture:
+        <input type="file" id="profilePicture" name="profilePicture" accept="image/*">
+      </label>
+      <button type="submit">Save Changes</button>
+      <p id="errMsg"></p>
+    </form>
+  </div>
+  <script>
+    const form = document.getElementById('editProfileForm');
+    const errMsg = document.getElementById("errMsg");
+    const name = document.getElementById("name");
+    const email = document.getElementById("email");
+
+    const currentEmail = localStorage.getItem("userEmail");
+    const currentName = localStorage.getItem("userName");
+    name.value = currentName || "";
+    email.value = currentEmail || "";
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!currentEmail) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/";
+        return;
+      }
+
+      const formData = new FormData(form);
+      formData.append("currentEmail", currentEmail);
+      const confirmPassword = formData.get("confirmPassword");
+      const password = formData.get("password");
+      if (password !== confirmPassword) {
+        errMsg.innerHTML = "Passwords do not match!";
+        return;
+      }
+
+      fetch('/api/edit-profile', {
+        method: 'POST',
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            if (data.newEmail) {
+              localStorage.setItem("userEmail", data.newEmail);
+            }
+            errMsg.innerHTML = "";
+            alert('Profile updated successfully!');
+            window.location.href = '/dashboard.html';
+          } else {
+            errMsg.innerHTML = data.message;
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
+  </script>
+</body>
+
+</html>
