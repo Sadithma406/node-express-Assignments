@@ -17,10 +17,9 @@ function register() {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          localStorage.setItem("token", data.token);
           errorMsg.innerHTML = "";
-          alert("Registration successful");
-          localStorage.setItem("userEmail", data.email);
-          localStorage.setItem("userName", data.name);
+          alert("Registration successful"); 
           window.location.href = "/dashboard.html";
         } else {
           errorMsg.innerHTML =  data.message || "Registration failed";

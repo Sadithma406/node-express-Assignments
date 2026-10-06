@@ -5,11 +5,14 @@ import nodemailer from "nodemailer";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import jwt from "jsonwebtoken";
 import { fileURLToPath } from "url";
 
 import User from "./models/user.js";
 
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const fileName = fileURLToPath(import.meta.url);
 const dirName = path.dirname(fileName);
@@ -32,6 +35,22 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) {
+    return res.status(401).send({ success: false, message: "Access denied. Please log in." });
+  }
+  // Strip "Bearer:" or "Bearer " prefix to extract actual JWT token string
+  const token = authHeader.replace(/^Bearer:?\s*/i, "").trim();
+
+  jwt.verify(token, JWT_SECRET, (err, decodedUser) => {
+    if (err) {
+      return res.status(403).send({ success: false, message: "Invalid or expired session. Please log in again." });
+    }
+    req.user = decodedUser; // Contains payload e.g. { email: "user@example.com" }
+    next();
+  });
+}
 function validatePassword(password) {
   if (password.length < 8) {
     const msg = "Password must be at least 8 characters long";
@@ -55,9 +74,8 @@ app.post("/api/login", async (req, res) => {
     const user = await User.findOne({ email })
     if (user) {
       if (user.password === password) {
-        const name = user.name;
-        const email = user.email;
-        res.send({ success: true, name, email })
+        const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "24h" });
+        res.send({ success: true, token, name: user.name, email: user.email })
       }
       else {
         res.send({ success: false, message: "Incorrect password" })
@@ -99,7 +117,8 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
     const user = new User({ name, email, password, profilePicture: index });
 
     await user.save();
-    res.send({ success: true, message: "Registration successful", name, email });
+    const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "24h" });
+    res.send({ success: true, message: "Registration successful", token, name: user.name, email: user.email });
   } catch (err) {
     res.send({ success: false, message: getErrorMessage(err) });
   }
@@ -173,37 +192,37 @@ app.post("/api/reset-password", async (req, res) => {
     res.send({ success: false, message: "Server error. Please try again." });
   }
 })
-app.post("/api/edit-profile", upload.single("profilePicture"), async (req, res) => {
-  const { currentEmail, email, name, password } = req.body;
-  const profilePicture = req.file;
 
+app.get("/api/user-profile", authenticateToken, async (req, res) => {
   try {
-    const user = await User.findOne({ email: currentEmail });
+    const user = await User.findOne({ email: req.user.email });
     if (!user) {
       return res.send({ success: false, message: "User not found" });
     }
-    if (!email) {
-      return res.send({ success: false, message: "Email cannot be empty!" });
-    }
-    user.name = name;
+    res.send({
+      success: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (err) {
+    res.send({ success: false, message: "Error loading profile data" });
+  }
+});
 
-    if (email !== currentEmail) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.send({ success: false, message: "The new email is already registered by another account" });
-      }
-      if (!email.includes("@") || !email.includes(".")) {
-        return res.send({ success: false, message: "Invalid email format" })
-      }
-      user.email = email;
-    }
+app.post("/api/edit-profile", authenticateToken, upload.single("profilePicture"), async (req, res) => {
+  const { email, name } = req.body;
+  const profilePicture = req.file;
 
-    if (password) {
-      const msg = validatePassword(password);
-      if (msg) {
-        return res.send({ success: false, message: msg })
-      }
-      user.password = password;
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.send({ success: false, message: "User not found" });
+    }
+    if (name) {
+      user.name = name;
     }
 
     if (profilePicture) {
@@ -220,7 +239,7 @@ app.post("/api/edit-profile", upload.single("profilePicture"), async (req, res) 
     }
 
     await user.save();
-    res.send({ success: true, message: "Profile updated successfully", newEmail: user.email });
+    res.send({ success: true, message: "Profile updated successfully" });
   } catch (err) {
     res.send({ success: false, message: getErrorMessage(err) });
   }

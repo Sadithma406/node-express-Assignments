@@ -16,9 +16,8 @@ function login() {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
+        localStorage.setItem("token", data.token);
         errMsg.innerHTML = "";
-        localStorage.setItem("userEmail", email);
-        localStorage.setItem("userName", data.name);
         alert("Successfully LoggedIn!");
         window.location.href = "/dashboard.html";
       }
