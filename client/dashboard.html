@@ -1,37 +1,74 @@
 <html>
-  <head>
+
+<head>
   <link rel="styleSheet" href="styles.css">
 </head>
+
 <body>
   <div id="dashboard-body">
-  <h2 id="heading">Dashboard</h2>
-  <p>Welcome! This is your dashboard where you can manage your account.</p>
-  <ul>
-    <li><a href="/editProfile.html">Edit Profile</a></li>
-    <li onclick="logout()"><a href="#">Logout</a></li>
-  </ul>
-</div>
+    <h2 id="heading">User Profile</h2>
+
+    <div class="profile-card">
+      <div class="profile-avatar-container">
+        <img id="profilePic" class="profile-avatar" src="" alt="Profile Picture"
+          onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff&size=128';">
+      </div>
+      <h3 id="userName" class="profile-name">Loading...</h3>
+      <p id="userEmail" class="profile-email">Loading...</p>
+
+      <div class="profile-actions">
+        <button onclick="window.location.href='/editProfile.html'" type="button">Edit Profile</button>
+        <button onclick="logout()" type="button" class="btn-secondary">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function logout() {
+      localStorage.removeItem("token");
+      alert("You have been successfully logged out.");
+      window.location.href = "/";
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Session expired. Please log in again.");
+      window.location.href = "/";
+    } else {
+      fetch('/api/user-profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const user = data.user;
+            document.getElementById("userName").innerText = user.name || "User";
+            document.getElementById("userEmail").innerText = user.email || "";
+
+            // Profile Picture Handling
+            const imgElem = document.getElementById("profilePic");
+            if (user.profilePicture) {
+              const picSrc = String(user.profilePicture).includes(".")
+                ? `/uploads/${user.profilePicture}`
+                : `/uploads/${user.profilePicture}.png`;
+              imgElem.src = picSrc;
+            } else {
+              imgElem.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=3b82f6&color=fff&size=128`;
+            }
+          } else {
+            alert("Failed to fetch user profile: " + (data.message || ""));
+            localStorage.removeItem("token");
+            window.location.href = "/";
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching user profile:", err);
+        });
+    }
+  </script>
 </body>
-<script>
-  function logout(){
-    localStorage.removeItem("token");
-    alert("You have been successfully logged out.");
-    window.location.href = "/";
-  }
-  fetch('/api/user-profile',{
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem("token")}`
-  }
-}).then(response => response.json()).then(data => {
-      if (data.success) {
-          // Populate the dashboard with user data
-          document.getElementById("heading").innerText = `Welcome ${data.name}`;
-      } else {
-          alert("Failed to fetch user profile");
-      }
-  }).catch(err => {
-      console.error("Error fetching user profile:", err);
-  });
-</script>
+
 </html>
