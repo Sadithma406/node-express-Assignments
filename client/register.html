@@ -5,22 +5,34 @@
 </head>
 
 <body id="register-body">
-  <h2>Register</h2>
-  <form id="register-form" enctype="multipart/form-data">
-    <label>Name: </label>
-    <input type="text" name="name" id="name"><br><br>
-    <label> Email: </label>
-    <input type="text" name="email" id="email"><br><br>
-    <label> Password: </label>
-    <input type="password" name="password" id="password"><br><br>
-    <label>Confirm password</label>
-    <input type="password" name="confirmPassword" id="confirmPassword"><br><br>
-    <label>Profile picture: </label>
-    <input type="file" name="profilePicture" id="profilePicture" accept="image/*"><br><br>
-  </form>
-  <button type="button" id="registerBtn">Register</button><br><br>
-  <p>Already have an account? <a href="/">Login</a> </p>
-  <p id="errMsg"></p>
+  <div id="register-container">
+    <h2>Register</h2>
+    <form id="register-form" enctype="multipart/form-data">
+      <label>Name: </label>
+      <input type="text" name="name" id="name"><br><br>
+      <label> Email: </label>
+      <input type="text" name="email" id="email"><br><br>
+      <label> Description: </label>
+      <input type="text" name="description" id="description"><br><br>
+      <label> Password: </label>
+      <input type="password" name="password" id="password"><br><br>
+      <label>Confirm password</label>
+      <input type="password" name="confirmPassword" id="confirmPassword"><br><br>
+      <label>Profile picture: </label>
+      <input type="file" name="profilePicture" id="profilePicture" accept="image/*"><br><br>
+    </form>
+    <button type="button" id="registerBtn">Register</button><br><br>
+    <p>Already have an account? <a href="/">Login</a> </p>
+    <p id="errMsg"></p>
+  </div>
+  <div id="otp-section" style="display:none">
+    <h4>An OTP is sent to the email entered. Enter the OTP to verify your email.</h4>
+    <form id="otp-form">
+      <label> Enter the OTP sent: </label>
+      <input type="text" name="otp" id="otp"><br><br>
+      <button type="button" id="verifyOtpBtn">Verify OTP</button><br><br>
+    </form>
+  </div>
 </body>
 <script src="register.js"></script>
 

@@ -7,25 +7,86 @@
 <body>
   <div id="editProfile-body">
     <h2>Edit Profile</h2>
-    <form id="editProfileForm">
-      <label>Email:
-        <input type="email" id="email" name="email" required disabled>
-      </label>
-      <label>Name:
-        <input type="text" id="name" name="name">
-      </label>
-      <label>Profile Picture:
-        <input type="file" id="profilePicture" name="profilePicture" accept="image/*">
-      </label>
-      <button type="submit">Save Changes</button>
-      <p id="errMsg"></p>
-    </form>
+
+    <div id="edit-profile-overview">
+      <p>Update your details</p>
+      <li><a onclick="showSection('name-description')" style="cursor:pointer">Update Name and Description</a></li>
+      <li><a onclick="showSection('profile-picture')" style="cursor:pointer">Change Profile Picture</a></li>
+      <li><a onclick="showSection('change-password')" style="cursor:pointer">Change Password</a></li>
+      <button type="button" onclick="window.location.href='/dashboard.html'">Back to Dashboard</button>
+    </div>
+    <div id="edit-name-description" style="display:none">
+      <h3>Name and Description</h3>
+      <form id="editNameForm">
+        <label>Name:
+          <input type="text" id="name" name="name">
+        </label>
+        <label>Description:
+          <input type="text" id="description" name="description">
+        </label>
+        <button type="button" onclick="showSection('overview')">Back</button>
+        <button type="submit">Save changes</button>
+      </form>
+    </div>
+    <div id="edit-profile-picture" style="display:none">
+      <h3>Profile Picture</h3>
+      <form id="editProfilePictureForm">
+        <label> Upload a new profile picture:
+          <input type="file" id="profilePicture" name="profilePicture" accept="image/*">
+        </label>
+        <button type="button" onclick="showSection('overview')">Back</button>
+        <button type="submit">Save changes</button>
+      </form>
+    </div>
+    <div id="edit-change-password" style="display:none">
+      <h3>Change Password</h3>
+      <form id="editChangePasswordForm">
+        <label>Current Password:
+          <input type="password" id="currentPassword" name="currentPassword" placeholder="Current Password">
+        </label>
+        <label>New Password:
+          <input type="password" id="newPassword" name="newPassword" placeholder="New Password">
+        </label>
+        <label>Confirm New Password:
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm New Password">
+        </label>
+        <button type="button" onclick="showSection('overview')">Back</button>
+        <button type="submit">Save changes</button>
+      </form>
+    </div>
+
+    <p id="errMsg"></p>
   </div>
   <script>
-    const form = document.getElementById('editProfileForm');
+    const formNameDesc = document.getElementById("editNameForm");
+    const formProfilePicture = document.getElementById("editProfilePictureForm");
+    const formChangePassword = document.getElementById("editChangePasswordForm");
     const errMsg = document.getElementById("errMsg");
-    const name = document.getElementById("name");
-    const email = document.getElementById("email");
+    const editProfileOverview = document.getElementById("edit-profile-overview");
+    const editNameDescription = document.getElementById("edit-name-description");
+    const editProfilePicture = document.getElementById("edit-profile-picture");
+    const editChangePassword = document.getElementById("edit-change-password");
+    const nameInput = document.getElementById("name");
+    const descInput = document.getElementById("description");
+
+    function showSection(section) {
+
+      editProfileOverview.style.display = "none";
+      editNameDescription.style.display = "none";
+      editProfilePicture.style.display = "none";
+      editChangePassword.style.display = "none";
+
+      if (section === 'name-description') {
+        editNameDescription.style.display = "block";
+      } else if (section === 'profile-picture') {
+        editProfilePicture.style.display = "block";
+      } else if (section === 'change-password') {
+        editChangePassword.style.display = "block";
+      }
+      else if (section === 'overview') {
+        editProfileOverview.style.display = "block";
+      }
+    }
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -42,8 +103,8 @@
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            name.value = data.user.name || "";
-            email.value = data.user.email || "";
+            nameInput.value = data.user.name || "";
+            descInput.value = data.user.description || "";
           } else {
             alert("Failed to load profile data");
           }
@@ -52,11 +113,11 @@
           console.error('Error:', error);
         });
     }
-    form.addEventListener('submit', (event) => {
+    formNameDesc.addEventListener('submit', (event) => {
       event.preventDefault();
-      const formData = new FormData(form);
+      const formData = new FormData(formNameDesc);
 
-      fetch('/api/edit-profile', {
+      fetch('/api/edit-Name-Desc', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -68,7 +129,60 @@
           if (data.success) {
             errMsg.innerHTML = "";
             alert('Profile updated successfully!');
-            window.location.href = '/dashboard.html';
+            editNameDescription.style.display = "none";
+            editProfileOverview.style.display = "block";
+          } else {
+            errMsg.innerHTML = data.message;
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
+    formProfilePicture.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData(formProfilePicture);
+
+      fetch('/api/edit-profile-picture', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            errMsg.innerHTML = "";
+            alert('Profile picture updated successfully!');
+            editProfilePicture.style.display = "none";
+            editProfileOverview.style.display = "block";
+          } else {
+            errMsg.innerHTML = data.message;
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
+    formChangePassword.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData(formChangePassword);
+
+      fetch('/api/edit-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            errMsg.innerHTML = "";
+            alert('Password changed successfully!');
+            editChangePassword.style.display = "none";
+            editProfileOverview.style.display = "block";
           } else {
             errMsg.innerHTML = data.message;
           }

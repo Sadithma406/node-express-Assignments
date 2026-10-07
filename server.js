@@ -47,7 +47,7 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(403).send({ success: false, message: "Invalid or expired session. Please log in again." });
     }
-    req.user = decodedUser; // Contains payload e.g. { email: "user@example.com" }
+    req.user = decodedUser; 
     next();
   });
 }
@@ -90,13 +90,15 @@ app.post("/api/login", async (req, res) => {
   }
 })
 
+const pendingRegistrations = new Map();
+
 app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, description, password } = req.body;
   const profilePicture = req.file;
 
   try {
-    if (!name || !email || !password) {
-      return res.send({ success: false, message: "Name, email and password are required" })
+    if (!name || !email || !description || !password) {
+      return res.send({ success: false, message: "Name, email, description and password are required" })
     }
     const msg = validatePassword(password);
     if (msg) {
@@ -105,20 +107,16 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
     if (!email.includes("@") || !email.includes(".")) {
       return res.send({ success: false, message: "Invalid email format" })
     }
-    let index = null;
-    if (profilePicture) {
-      const count = await User.countDocuments();
-      index = count + 1;
-      const extension = path.extname(profilePicture.originalname);
-      const newFilename = `${index}${extension}`;
-      fs.renameSync(profilePicture.path, path.join(uploadDir, newFilename));
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.send({ success: false, message: "Email is already registered. Please use a different one." })
     }
 
-    const user = new User({ name, email, password, profilePicture: index });
+    pendingRegistrations.set(email, { name, email, description, password, profilePicture });
 
-    await user.save();
-    const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "24h" });
-    res.send({ success: true, message: "Registration successful", token, name: user.name, email: user.email });
+    // Send OTP to verify email
+    await sendOTP(email);
+    res.send({ success: true, message: "OTP sent to your email. Please verify to complete registration." });
   } catch (err) {
     res.send({ success: false, message: getErrorMessage(err) });
   }
@@ -126,20 +124,23 @@ app.post("/api/register", upload.single("profilePicture"), async (req, res) => {
 
 const otpStore = new Map();
 
+async function sendOTP(email) {
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  console.log("OTP for", email, ":", otp);
+  otpStore.set(email, { otp: String(otp), verified: false });
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Email Verification OTP",
+    text: `Your OTP is ${otp}. Please verify it to complete your action.`,
+  });
+}
 app.post("/api/forgot-password", async (req, res) => {
   const email = req.body.email;
   try {
     const user = await User.findOne({ email });
     if (user) {
-      const otp = Math.floor(100000 + Math.random() * 900000);
-      console.log("OTP for", email, ":", otp);
-      otpStore.set(email, { otp: String(otp), verified: false });
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "Password Reset OTP",
-        text: `Your OTP is ${otp}. Please verify it to reset your password`,
-      });
+      await sendOTP(email);
       res.send({ success: true });
     } else {
       res.send({ success: false, message: "User not found" });
@@ -160,6 +161,26 @@ app.post("/api/verify-otp", async (req, res) => {
       return res.send({ success: false, message: "Incorrect OTP. Please try again." });
     }
     otpStore.set(email, { ...entry, verified: true });
+
+    // Check if this is a registration OTP verification
+    const pending = pendingRegistrations.get(email);
+    if (pending) {
+      let index = null;
+      if (pending.profilePicture) {
+        const count = await User.countDocuments();
+        index = count + 1;
+        const extension = path.extname(pending.profilePicture.originalname);
+        const newFilename = `${index}${extension}`;
+        fs.renameSync(pending.profilePicture.path, path.join(uploadDir, newFilename));
+      }
+      const user = new User({ name: pending.name, email: pending.email, description: pending.description, password: pending.password, profilePicture: index });
+      await user.save();
+      pendingRegistrations.delete(email);
+      otpStore.delete(email);
+
+      const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "24h" });
+      return res.send({ success: true, message: "Registration successful", token, isRegistration: true });
+    }
     res.send({ success: true });
   }
   catch (err) {
@@ -204,6 +225,7 @@ app.get("/api/user-profile", authenticateToken, async (req, res) => {
       user: {
         name: user.name,
         email: user.email,
+        description: user.description,
         profilePicture: user.profilePicture
       }
     });
@@ -211,35 +233,63 @@ app.get("/api/user-profile", authenticateToken, async (req, res) => {
     res.send({ success: false, message: "Error loading profile data" });
   }
 });
-
-app.post("/api/edit-profile", authenticateToken, upload.single("profilePicture"), async (req, res) => {
-  const { email, name } = req.body;
+app.post("/api/edit-Name-Desc", authenticateToken, upload.none(), async (req, res) => {
+  const { name, description } = req.body;
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    user.name = name;
+    user.description = description;
+    await user.save();
+    res.send({ success: true, message: "Profile updated successfully" });
+  } catch (err) {
+    res.send({ success: false, message: "Error updating profile" });
+  }
+})
+app.post("/api/edit-profile-picture", authenticateToken, upload.single("profilePicture"), async (req, res) => {
   const profilePicture = req.file;
-
   try {
     const user = await User.findOne({ email: req.user.email });
     if (!user) {
       return res.send({ success: false, message: "User not found" });
     }
-    if (name) {
-      user.name = name;
+    if (!profilePicture) {
+      return res.send({ success: false, message: "No profile picture uploaded" });
     }
-
-    if (profilePicture) {
-      let index = user.profilePicture;
-      if (!index) {
-        const count = await User.countDocuments();
-        index = count + 1;
-        user.profilePicture = index;
-      }
-
-      const extension = path.extname(profilePicture.originalname);
-      const newFilename = `${index}${extension}`;
-      fs.renameSync(profilePicture.path, path.join(uploadDir, newFilename));
+    let index = user.profilePicture;
+    if (!index) {
+      const count = await User.countDocuments();
+      index = count + 1;
+      user.profilePicture = index;
     }
-
+    const extension = path.extname(profilePicture.originalname);
+    const newFilename = `${index}${extension}`;
+    fs.renameSync(profilePicture.path, path.join(uploadDir, newFilename));
     await user.save();
-    res.send({ success: true, message: "Profile updated successfully" });
+    res.send({ success: true, message: "Profile picture updated successfully" });
+  } catch (err) {
+    res.send({ success: false, message: getErrorMessage(err) });
+  }
+})
+app.post("/api/edit-password", authenticateToken, upload.none(), async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    if (!currentPassword || !newPassword) {
+      return res.send({ success: false, message: "Current password and new password are required" });
+    }
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.send({ success: false, message: "User not found" });
+    }
+    if (user.password !== currentPassword) {
+      return res.send({ success: false, message: "Current password is incorrect" });
+    }
+    const msg = validatePassword(newPassword);
+    if (msg) {
+      return res.send({ success: false, message: msg });
+    }
+    user.password = newPassword;
+    await user.save();
+    res.send({ success: true, message: "Password updated successfully" });
   } catch (err) {
     res.send({ success: false, message: getErrorMessage(err) });
   }
